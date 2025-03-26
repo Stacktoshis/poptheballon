@@ -1,0 +1,1435 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pop Balloons or Find Love</title>
+  <!-- Include WaxJS library -->
+  <script src="https://unpkg.com/@waxio/waxjs/dist/WaxJS.min.js"></script>
+  <style>
+    :root {
+      --cell-size: 150px;
+      --banner-bg: linear-gradient(135deg, #D21F3C, #FFAE42);
+      --hamburger-color: #fff;
+      --nav-link-color: #fff;
+      --nav-link-hover: #f0f0f0;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: var(--banner-bg);
+      color: #fff;
+      padding: 15px 30px;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+    .hamburger { display: inline-block; }
+    #hamburger-btn {
+      background: none;
+      border: none;
+      color: var(--hamburger-color);
+      font-size: 28px;
+      cursor: pointer;
+    }
+    .logo h1 {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: 1px;
+    }
+    nav.nav-desk {
+      display: flex;
+      gap: 20px;
+    }
+    nav.nav-desk a {
+      color: var(--nav-link-color);
+      text-decoration: none;
+      font-size: 16px;
+      transition: color 0.3s;
+    }
+    nav.nav-desk a:hover { color: var(--nav-link-hover); }
+    nav.nav-mobile {
+      display: none;
+      position: absolute;
+      top: 60px;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.9);
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 0;
+      z-index: 10;
+    }
+    nav.nav-mobile a {
+      color: var(--nav-link-color);
+      padding: 10px 20px;
+      text-decoration: none;
+      font-size: 18px;
+      border-bottom: 1px solid #444;
+    }
+    nav.nav-mobile a:hover { background: #333; }
+    @media (max-width: 768px) {
+      nav.nav-desk { display: none; }
+      nav.nav-mobile { display: none; }
+      nav.nav-mobile.active { display: flex; }
+    }
+    #pops-remaining, #keep-count {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    #reset-timer {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+    #ticker {
+      width: 100%;
+      overflow: hidden;
+      background: #ffcc00;
+      color: #000;
+      font-size: 18px;
+      padding: 10px 0;
+      position: relative;
+    }
+    /* Global ticker scrolls immediately */
+    #ticker-content {
+      white-space: nowrap;
+      animation: tickerTapeAnim 12s linear infinite;
+      animation-play-state: running;
+    }
+    @keyframes tickerTapeAnim {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    /* Waitlist status */
+    #waitlist-status {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    nav#nav-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 10px 0;
+      background: #eee;
+      box-shadow: inset 0 -2px 4px rgba(0,0,0,0.1);
+    }
+    nav#nav-buttons button {
+      padding: 8px 14px;
+      font-size: 16px;
+      background: #fff;
+      color: #333;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    nav#nav-buttons button:hover { background: #f0f0f0; }
+    /* Balloon container: exactly 12 cells (3 columns x 4 rows) */
+    #balloon-container {
+      width: calc(var(--cell-size) * 3);
+      height: calc(var(--cell-size) * 4);
+      border: 1px solid #ccc;
+      overflow: hidden;
+      position: relative;
+      margin: 20px auto;
+      background-color: #f0f0f0;
+    }
+    #grid-container {
+      position: relative;
+      margin: 0 auto;
+    }
+    .grid-cell {
+      position: absolute;
+      width: var(--cell-size);
+      height: var(--cell-size);
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      font-size: 10px;
+      color: #666;
+      pointer-events: none;
+    }
+    .grid-cell .cell-label {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: rgba(255,255,255,0.7);
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+    .highlight {
+      border: 3px solid red !important;
+      animation: highlightBlink 1s infinite;
+    }
+    @keyframes highlightBlink {
+      0% { border-color: red; }
+      50% { border-color: yellow; }
+      100% { border-color: red; }
+    }
+    .rental-label {
+      position: absolute;
+      top: -20px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      color: #000;
+      background: rgba(255,255,255,0.8);
+      pointer-events: none;
+    }
+    .balloon {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.9), rgba(0,150,255,0.3));
+      border: 3px solid transparent;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: left 0.1s ease-out, top 0.1s ease-out;
+      will-change: left, top;
+      z-index: 2;
+    }
+    .balloon::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 30%;
+      height: 30%;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      transform: rotate(-20deg);
+      pointer-events: none;
+    }
+    .balloon.popped::before { display: none; }
+    .balloon-string {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 30px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0));
+    }
+    .kept-icon, .available-icon {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      font-size: 16px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    .balloon:hover::after {
+      content: attr(data-handle);
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 1000;
+    }
+    .balloon.kept { border: 3px solid yellow !important; }
+    .balloon.popped { background: gray; border: 3px dashed #ccc; }
+    .popped-emoji {
+      display: block;
+      width: 100%;
+      text-align: center;
+      line-height: 50px;
+      font-size: 28px;
+    }
+    .gender-indicator {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      font-weight: bold;
+      color: black;
+    }
+    /* Balloon ticker below each balloon, each with a random duration */
+    .balloon-ticker {
+      position: absolute;
+      width: 100px;
+      left: 50%;
+      bottom: -25px;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .balloon-ticker span { display: inline-block; animation-play-state: running; }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    .modal-content {
+      background-color: rgba(255,255,255,0.9);
+      margin: 10% auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
+      border-radius: 10px;
+    }
+    #settings-content {
+      background-color: white;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 80%;
+      max-width: 400px;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+    .close { float: right; cursor: pointer; }
+    #signup-content {
+      background: linear-gradient(135deg, #ff8c00, #ffd700);
+      box-shadow: 0 0 15px rgba(255,140,0,0.7);
+      margin: 15% auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
+      border-radius: 10px;
+      position: relative;
+    }
+    #profile-handle { font-size: 14px; color: #333; }
+    #bottom-banner {
+      background-color: #ff6f61;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-size: 18px;
+    }
+    footer {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-size: 14px;
+    }
+    main { flex: 1; }
+    .user-info { text-align: left; }
+    .sponsored-balloon {
+      background: radial-gradient(circle at center, #ffcccc, #ff0000) !important;
+      position: relative;
+    }
+    .sponsored-balloon::before {
+      content: "Ad";
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-weight: bold;
+    }
+    #room-navigation {
+      text-align: center;
+      margin: 10px 0;
+    }
+    #room-navigation button {
+      padding: 8px 12px;
+      margin: 0 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #room-indicator { font-size: 16px; margin: 0 10px; }
+    #tutorial-modal .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 20px;
+      width: 80%;
+      max-width: 500px;
+      text-align: left;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-top">
+      <div class="hamburger">
+        <button id="hamburger-btn">&#9776;</button>
+      </div>
+      <div class="logo">
+        <h1>Pop Balloons or Find Love</h1>
+      </div>
+      <div class="header-right">
+        <!-- Desktop Navigation Links -->
+        <nav class="nav-desk">
+          <a href="#" id="tutorial">Tutorial</a>
+          <a href="#" id="buy-pops">Buy Pops</a>
+          <a href="#" id="buy-keeps">Buy Keeps</a>
+          <a href="#" id="subscribe-btn">Subscribe</a>
+          <a href="#" id="coffee-bundle-btn">Coffee Bundle</a>
+          <a href="#" id="watch-ad-btn">Watch Ad</a>
+          <a href="#" id="remove-ads-btn">Remove Ads</a>
+          <!-- Use Wax Cloud Wallet for login -->
+          <a href="#" id="wax-login-btn">Wax Login</a>
+          <a href="#" id="invite-btn">Invite a Friend</a>
+          <a href="#" id="settings">Settings</a>
+          <a href="#" id="share-button">Share</a>
+          <a href="#" id="leaderboard-toggle">Leaderboard</a>
+        </nav>
+      </div>
+    </div>
+    <!-- Mobile Navigation Drawer -->
+    <nav class="nav-mobile" id="mobile-nav">
+      <a href="#" id="tutorial-mobile">Tutorial</a>
+      <a href="#" id="buy-pops-mobile">Buy Pops</a>
+      <a href="#" id="buy-keeps-mobile">Buy Keeps</a>
+      <a href="#" id="subscribe-btn-mobile">Subscribe</a>
+      <a href="#" id="coffee-bundle-btn-mobile">Coffee Bundle</a>
+      <a href="#" id="watch-ad-btn-mobile">Watch Ad</a>
+      <a href="#" id="remove-ads-btn-mobile">Remove Ads</a>
+      <a href="#" id="wax-login-btn-mobile">Wax Login</a>
+      <a href="#" id="invite-btn-mobile">Invite a Friend</a>
+      <a href="#" id="settings-mobile">Settings</a>
+      <a href="#" id="share-button-mobile">Share</a>
+      <a href="#" id="leaderboard-toggle-mobile">Leaderboard</a>
+    </nav>
+    <div id="pops-remaining"><span id="pop-count">Pops Remaining: 5</span></div>
+    <div id="keep-count"><span id="keep-count-text">Keeps Remaining: 1</span></div>
+    <div id="reset-timer">Next Reset: <span id="timer">00:03:00</span></div>
+    <!-- Waitlist Status -->
+    <div id="waitlist-status"></div>
+  </header>
+  <!-- Global Ticker Tape -->
+  <div id="ticker">
+    <marquee>
+      Welcome to Pop the balloon or find love web app. The goal is to find your type by keeping their balloon. DM them and set up a potential first date in real life. Pop the balloons of those that are not your type. Guys are blue, girls are pink, and available spots are green. Click a balloon to sign-up and join the fun!
+    </marquee>
+  </div>
+  <!-- Leaderboard -->
+  <div id="leaderboard-dropdown" style="display:none; position:absolute; top:50px; right:20px; background:#fff; padding:10px; border:1px solid #ccc; z-index:1000;">
+    <h3>Leaderboard</h3>
+    <ul id="full-hearts-leaderboard"></ul>
+    <ul id="broken-hearts-leaderboard"></ul>
+    <button id="close-leaderboard">Close</button>
+  </div>
+  <!-- Navigation Buttons -->
+  <nav id="nav-buttons">
+    <button onclick="changeRoom('up')">Previous Room</button>
+    <span id="room-indicator">Balloon Room 1 of 10</span>
+    <button onclick="changeRoom('down')">Next Room</button>
+  </nav>
+  <main>
+    <div id="search-container" style="text-align:center; margin:10px 0;">
+      <input type="text" id="search-coords" placeholder="e.g., 1,2" />
+      <button id="search-btn">Search</button>
+      <button id="rent-btn">Book a spot</button>
+    </div>
+    <div id="balloon-container">
+      <div id="grid-container"></div>
+    </div>
+  </main>
+  <div id="bottom-banner">Enjoy finding your match!</div>
+  <footer>&copy; 2025 Pop Balloons or Find Love. All rights reserved.</footer>
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="profile-name"></h2>
+      <p id="profile-handle"></p>
+      <button id="pop-balloon">Pop Balloon</button>
+      <button id="keep-balloon">Keep Balloon</button>
+    </div>
+  </div>
+  <!-- Keep Modal -->
+  <div id="keep-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="keep-close">&times;</span>
+      <h2>Balloon Kept!</h2>
+      <p>Here is the profile of the player you kept:</p>
+      <img id="kept-profile-pic" src="" alt="Profile Picture" style="max-width:100px; border-radius:50%;"/><br/>
+      <div id="social-links">
+        <p>Your match: <a href="" id="kept-handle-link" target="_blank"></a></p>
+        <button id="show-more-btn">More potential matches (+"0")</button>
+        <div id="more-matches" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div id="settings-content">
+      <span id="settings-close" class="close">&times;</span>
+      <h2>Settings</h2>
+      <label>
+        <input type="checkbox" id="sound-toggle"> Sound On/Off
+      </label>
+    </div>
+  </div>
+  <!-- Sign-Up Modal (for setting a nickname if not using Wax login) -->
+  <div id="signup-modal" class="modal">
+    <div id="signup-content">
+      <span class="close" id="signup-close">&times;</span>
+      <h2>Set Your Nickname</h2>
+      <form id="signup-form">
+        <input type="text" id="nickname" placeholder="Nickname" required /><br />
+        <button type="submit">Set Nickname</button>
+      </form>
+    </div>
+  </div>
+  <!-- Tutorial Modal -->
+  <div id="tutorial-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="tutorial-close">&times;</span>
+      <h2>Tutorial / Onboarding</h2>
+      <p>Welcome to Pop Balloons or Find Love! Here are some new features to help you get started:</p>
+      <ul>
+        <li><strong>Balloon Spots:</strong> Book your own spot in a room. The first room is premium-priced, with fees decreasing in each subsequent room.</li>
+        <li><strong>Subscriptions:</strong> Enjoy a free trial or choose between subscription tiers for extra benefits.</li>
+        <li><strong>Ad Options:</strong> Watch rewarded ads for extra pops/keeps – or choose the one–time Ad-Free option to remove ads permanently.</li>
+        <li><strong>Invite a Friend:</strong> Invite your friends to join. If they sign up using your invite link, both of you earn extra pops and keeps!</li>
+      </ul>
+      <p>Click the "×" to close this tutorial.</p>
+    </div>
+  </div>
+  <!-- Share Modal -->
+  <div id="share-modal" class="modal">
+    <div id="share-content" class="modal-content">
+      <span class="close" id="share-close">&times;</span>
+      <h2>Share This Game</h2>
+      <p>Spread the word about Pop Balloons or Find Love!</p>
+      <div>
+        <a href="#" id="share-x" target="_blank">X</a>
+        <a href="#" id="share-telegram" target="_blank">Telegram</a>
+        <a href="#" id="share-facebook" target="_blank">Facebook</a>
+        <a href="#" id="share-whatsapp" target="_blank">WhatsApp</a>
+        <a href="javascript:void(0)" id="share-instagram">Instagram (Copy Link)</a>
+      </div>
+    </div>
+    <audio id="pop-sound" src="pop.mp3"></audio>
+  </div>
+  <script>
+    // ========= Initialize WaxJS for the Testnet =========
+    const wax = new WaxJS({
+      rpcEndpoint: "https://testnet.waxsweden.org", // Wax testnet endpoint
+      tryAutoLogin: true,
+    });
+    // ========= Global Variables and Waitlist Logic =========
+    let currentPlayerData = null;
+    let hasSignedUp = false;
+    let waitlistMale = [];
+    let waitlistFemale = [];
+    let paidWaitlistMale = [];
+    let paidWaitlistFemale = [];
+    let signedUpUsers = [];
+    let globalPops = 0;
+    let globalKeeps = 0;
+    let waitlistCounter = 1;
+    let simulatedUsersAdded = false;
+    // Game session management
+    let gameSession = {
+      popsInSession: 0,
+      keepsInSession: 0,
+      lastAction: null, // 'pop' or 'keep'
+      reset: function() {
+        this.popsInSession = 0;
+        this.keepsInSession = 0;
+        this.lastAction = null;
+      }
+    };
+    // Added new variables...
+    let malePops = 0;
+    let femalePops = 0;
+    let sponsoredPops = 0;
+    let lockedGender = null; // Track the locked-in gender
+    let allowSponsoredPops = false; // Control whether sponsored pops and keeps are allowed
+    // Grid settings: 3 columns x 40 rows = 120 cells (10 rooms of 3x4)
+    const gridWidth = 3;
+    const gridHeight = 40;
+    const cellSize = 150;
+    const balloonSize = 50;
+    const roomRows = 4;
+    const totalRooms = gridHeight / roomRows; // exactly 10 rooms
+    let currentRoom = 1;
+    // Booking settings – 5-minute duration.
+    const rentalDuration = 5 * 60 * 1000;
+    const maxNickLength = Math.floor(cellSize / 10);
+    // Colors for balloon states.
+    const availableColor = "radial-gradient(circle at center, #d1f7d1, lightgreen)";
+    const maleColor = "radial-gradient(circle at center, #add8e6, #0000ff)";
+    const femaleColor = "radial-gradient(circle at center, #ffb6c1, #ff69b4)";
+    const customTickerText = "Welcome to Pop Balloons or Find Love! | Click a balloon to pop or keep it, sign up, book a spot, and invite friends to earn rewards!";
+    // Auto-login: If WaxJS already logged in, use that account
+    async function waxLogin() {
+      try {
+        const userAccount = await wax.login();
+        currentPlayerData = { 
+          waxAccount: userAccount, 
+          nickname: userAccount, // default nickname equals wax account name; can be updated via signup modal
+          isSubscribed: false 
+        };
+        localStorage.setItem("playerData", JSON.stringify(currentPlayerData));
+        alert("Logged in as " + userAccount);
+        assignBalloonSpots();
+      } catch (e) {
+        console.error(e);
+        alert("Wax login failed.");
+      }
+    }
+    // ========= Payment Processing using WaxJS =========
+    async function processPayment(amount, description) {
+      try {
+        const result = await wax.api.transact({
+          actions: [{
+            account: 'eosio.token',
+            name: 'transfer',
+            authorization: [{
+              actor: wax.userAccount,
+              permission: 'active',
+            }],
+            data: {
+              from: wax.userAccount,
+              to: 'gameacctwax', // replace with your game contract account on Wax testnet
+              quantity: parseFloat(amount).toFixed(8) + " WAXP",
+              memo: description,
+            },
+          }]
+        }, {
+          blocksBehind: 3,
+          expireSeconds: 30,
+        });
+        return true;
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    }
+    // ========= Pinata Integration for Data Storage =========
+    async function uploadDataToPinata(data) {
+      // Replace with your Pinata API keys
+      const PINATA_API_KEY = "YOUR_PINATA_API_KEY";
+      const PINATA_SECRET_API_KEY = "YOUR_PINATA_SECRET_API_KEY";
+      try {
+        const response = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "pinata_api_key": PINATA_API_KEY,
+            "pinata_secret_api_key": PINATA_SECRET_API_KEY
+          },
+          body: JSON.stringify({ pinataContent: data })
+        });
+        const result = await response.json();
+        return result.IpfsHash; // return the IPFS hash
+      } catch (e) {
+        console.error(e);
+        return null;
+      }
+    }
+    // ========= DOM Element References =========
+    const balloonContainer = document.getElementById("balloon-container");
+    const gridContainer = document.getElementById("grid-container");
+    let gridCells = [];
+    const modal = document.getElementById("profile-modal");
+    const closeButtons = document.querySelectorAll(".close");
+    const profileName = document.getElementById("profile-name");
+    const profileHandle = document.getElementById("profile-handle");
+    const popBalloonButton = document.getElementById("pop-balloon");
+    const keepBalloonButton = document.getElementById("keep-balloon");
+    const settingsButton = document.getElementById("settings");
+    const settingsModal = document.getElementById("settings-modal");
+    const settingsClose = document.getElementById("settings-close");
+    const soundToggle = document.getElementById("sound-toggle");
+    const resetTimerDisplay = document.getElementById("timer");
+    const popSound = document.getElementById("pop-sound");
+    const popCountDisplay = document.getElementById("pop-count");
+    const keepCountDisplay = document.getElementById("keep-count-text");
+    const tickerContent = document.getElementById("ticker-content");
+    const fullHeartsLeaderboard = document.getElementById("full-hearts-leaderboard");
+    const brokenHeartsLeaderboard = document.getElementById("broken-hearts-leaderboard");
+    const leaderboardToggle = document.getElementById("leaderboard-toggle");
+    const leaderboardDropdown = document.getElementById("leaderboard-dropdown");
+    const closeLeaderboard = document.getElementById("close-leaderboard");
+    const signupModal = document.getElementById("signup-modal");
+    const signupClose = document.getElementById("signup-close");
+    const signupForm = document.getElementById("signup-form");
+    const shareButton = document.getElementById("share-button");
+    const shareModal = document.getElementById("share-modal");
+    const shareClose = document.getElementById("share-close");
+    const shareX = document.getElementById("share-x");
+    const shareTelegram = document.getElementById("share-telegram");
+    const shareFacebook = document.getElementById("share-facebook");
+    const shareWhatsapp = document.getElementById("share-whatsapp");
+    const shareInstagram = document.getElementById("share-instagram");
+    const subscribeBtn = document.getElementById("subscribe-btn");
+    const coffeeBundleBtn = document.getElementById("coffee-bundle-btn");
+    const watchAdBtn = document.getElementById("watch-ad-btn");
+    const removeAdsBtn = document.getElementById("remove-ads-btn");
+    const searchInput = document.getElementById("search-coords");
+    const searchBtn = document.getElementById("search-btn");
+    const rentBtn = document.getElementById("rent-btn");
+    const roomIndicator = document.getElementById("room-indicator");
+    const inviteBtn = document.getElementById("invite-btn");
+    // Wax login buttons (desktop and mobile)
+    const waxLoginBtn = document.getElementById("wax-login-btn");
+    const waxLoginBtnMobile = document.getElementById("wax-login-btn-mobile");
+    const shareUrl = encodeURIComponent(window.location.href);
+    const shareText = encodeURIComponent("Check out Pop Balloons or Find Love!");
+    shareX.href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
+    shareTelegram.href = `https://t.me/share/url?url=${shareUrl}&text=${shareText}`;
+    shareFacebook.href = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`;
+    shareWhatsapp.href = `https://api.whatsapp.com/send?text=${shareText}%20${shareUrl}`;
+    shareInstagram.addEventListener("click", () => {
+      navigator.clipboard.writeText(window.location.href)
+        .then(() => alert("Link copied to clipboard!"))
+        .catch(() => alert("Failed to copy link."));
+    });
+    /* ========= Balloon Data Structure ========= */
+    const balloons = Array.from({ length: gridWidth }, (_, x) =>
+      Array.from({ length: gridHeight }, (_, y) => ({
+        color: null, popped: false, kept: false, user: null,
+        expiresAt: Date.now() + 3 * 60 * 1000,
+        paidUntil: null, offsetX: 0, offsetY: 0,
+        velX: (Math.random() - 0.5) * 0.2,
+        velY: (Math.random() - 0.5) * 0.2,
+        initialX: x * cellSize + (cellSize - balloonSize) / 2,
+        initialY: y * cellSize + (cellSize - balloonSize) / 2,
+        rentedBy: null, rentedUntil: 0,
+        element: null
+      }))
+    );
+    /* ========= Room & Grid Functions ========= */
+    function initRoomGrid() {
+      const roomStart = (currentRoom - 1) * roomRows;
+      const rowsInRoom = (currentRoom < totalRooms) ? roomRows : (gridHeight - roomStart);
+      gridContainer.style.width = `${cellSize * gridWidth}px`;
+      gridContainer.style.height = `${cellSize * rowsInRoom}px`;
+      gridContainer.innerHTML = "";
+      gridCells = [];
+      for (let x = 0; x < gridWidth; x++) {
+        gridCells[x] = [];
+        for (let y = roomStart; y < roomStart + rowsInRoom; y++) {
+          const cell = document.createElement("div");
+          cell.className = "grid-cell";
+          cell.style.left = `${x * cellSize}px`;
+          cell.style.top = `${(y - roomStart) * cellSize}px`;
+          cell.setAttribute("data-x", x);
+          cell.setAttribute("data-y", y);
+          const label = document.createElement("div");
+          label.className = "cell-label";
+          label.textContent = `(${x},${y})`;
+          cell.appendChild(label);
+          gridContainer.appendChild(cell);
+          gridCells[x][y] = cell;
+        }
+      }
+    }
+    /* ========= Balloon Rendering ========= */
+    function renderBalloons() {
+      const existingBalloons = document.querySelectorAll(".balloon");
+      existingBalloons.forEach(el => el.remove());
+      const roomStart = (currentRoom - 1) * roomRows;
+      const rowsInRoom = (currentRoom < totalRooms) ? roomRows : (gridHeight - roomStart);
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = roomStart; y < roomStart + rowsInRoom; y++) {
+          const balloon = balloons[x][y];
+          if (balloon.paidUntil ? balloon.paidUntil > Date.now() : balloon.expiresAt > Date.now()) {
+            const balloonElement = document.createElement("div");
+            balloonElement.className = "balloon";
+            if (balloon.user && balloon.user.gender === "sponsored") {
+              balloonElement.classList.add("sponsored-balloon");
+            }
+            balloonElement.style.left = `${balloon.initialX + balloon.offsetX}px`;
+            balloonElement.style.top = `${(balloon.initialY - roomStart * cellSize) + balloon.offsetY}px`;
+            if (!balloon.popped) {
+              if (balloon.user) {
+                balloonElement.style.background = (balloon.user.gender === "male") ? maleColor : (balloon.user.gender === "female") ? femaleColor : availableColor;
+              } else {
+                balloonElement.style.background = availableColor;
+              }
+            } else {
+              balloonElement.style.background = "gray";
+              balloonElement.innerHTML = `<span class="popped-emoji">💔</span>`;
+            }
+            if (!balloon.popped) {
+              if (balloon.kept) {
+                const keptSpan = document.createElement("span");
+                keptSpan.className = "kept-icon";
+                keptSpan.textContent = "❤️";
+                balloonElement.appendChild(keptSpan);
+              }
+              if (!balloon.user) {
+                const availableSpan = document.createElement("span");
+                availableSpan.className = "available-icon";
+                availableSpan.textContent = "😉";
+                balloonElement.appendChild(availableSpan);
+              }
+              const stringElement = document.createElement("div");
+              stringElement.className = "balloon-string";
+              balloonElement.appendChild(stringElement);
+              if (balloon.user) {
+                const genderIndicator = document.createElement("div");
+                genderIndicator.className = "gender-indicator";
+                genderIndicator.textContent = balloon.user.isSimulated 
+                  ? (balloon.user.gender === "sponsored" ? "Sponsored" : (balloon.user.gender === "male" ? "M" : "F"))
+                  : (balloon.user.gender === "male" ? "M" : (balloon.user.gender === "female" ? "F" : ""));
+                balloonElement.appendChild(genderIndicator);
+              }
+            }
+            const tickerTape = document.createElement("div");
+            tickerTape.className = "balloon-ticker";
+            const tickerSpan = document.createElement("span");
+            let text;
+            if (balloon.user) {
+              const waitlistNumberText = balloon.user.waitlistNumber ? "Spot #" + balloon.user.waitlistNumber + " | " : "";
+              const name = balloon.user.nickname || "";
+              const age = balloon.user.age || "N/A";
+              const hobbies = balloon.user.hobbies ? balloon.user.hobbies.join(", ") : "N/A";
+              const loveLanguages = balloon.user.loveLanguages ? balloon.user.loveLanguages.join(", ") : "N/A";
+              const dealBreakers = balloon.user.dealBreakers ? balloon.user.dealBreakers.join(", ") : "N/A";
+              let status = "Active";
+              if (balloon.popped) { status = "Popped"; }
+              else if (balloon.kept) { status = "Kept"; }
+              text = waitlistNumberText + `${name} | Age: ${age} | Hobbies: ${hobbies} | Love: ${loveLanguages} | Deal: ${dealBreakers} | ${status}`;
+            } else { 
+              text = "Available! Click to sign up and join the game!"; 
+            }
+            tickerSpan.innerHTML = text + "    " + text;
+            var tickerDuration = (10 + Math.random() * 5).toFixed(2) + "s";
+            tickerSpan.style.animation = "tickerTapeAnim " + tickerDuration + " linear infinite";
+            tickerTape.appendChild(tickerSpan);
+            balloonElement.appendChild(tickerTape);
+            balloonElement.dataset.handle = balloon.user ? balloon.user.nickname : "Sign Up / Login";
+            balloonElement.addEventListener("click", () => handleBalloonClick(x, y));
+            gridContainer.appendChild(balloonElement);
+            balloon.element = balloonElement;
+          }
+        }
+      }
+      updateBookingLabels();
+    }
+    function updateBalloonPositions() {
+      const roomStart = (currentRoom - 1) * roomRows;
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = roomStart; y < roomStart + roomRows; y++) {
+          const balloon = balloons[x][y];
+          if (balloon && balloon.element) {
+            balloon.element.style.left = `${balloon.initialX + balloon.offsetX}px`;
+            balloon.element.style.top = `${(balloon.initialY - roomStart * cellSize) + balloon.offsetY}px`;
+          }
+        }
+      }
+    }
+    function simulateBalloons() {
+      const now = Date.now();
+      const maxOffset = 10;
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          let bubble = balloons[x][y];
+          if (bubble.paidUntil ? bubble.paidUntil <= now : bubble.expiresAt <= now) continue;
+          bubble.offsetX += bubble.velX;
+          bubble.offsetY += bubble.velY;
+          if (bubble.offsetX > maxOffset || bubble.offsetX < -maxOffset) {
+            bubble.velX = -bubble.velX;
+            bubble.offsetX = Math.max(Math.min(bubble.offsetX, maxOffset), -maxOffset);
+          }
+          if (bubble.offsetY > maxOffset || bubble.offsetY < -maxOffset) {
+            bubble.velY = -bubble.velY;
+            bubble.offsetY = Math.max(Math.min(bubble.offsetY, maxOffset), -maxOffset);
+          }
+        }
+      }
+      let bubbleList = [];
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          let bubble = balloons[x][y];
+          if (bubble.paidUntil ? bubble.paidUntil <= now : bubble.expiresAt <= now) continue;
+          bubble.centerX = bubble.initialX + balloonSize/2 + bubble.offsetX;
+          bubble.centerY = bubble.initialY + balloonSize/2 + bubble.offsetY;
+          bubbleList.push(bubble);
+        }
+      }
+      for (let i = 0; i < bubbleList.length; i++) {
+        for (let j = i + 1; j < bubbleList.length; j++) {
+          let b1 = bubbleList[i], b2 = bubbleList[j];
+          let dx = b2.centerX - b1.centerX;
+          let dy = b2.centerY - b1.centerY;
+          let dist = Math.sqrt(dx*dx + dy*dy);
+          let minDist = balloonSize;
+          if (dist < minDist && dist > 0) {
+            let overlap = minDist - dist;
+            let pushX = (dx / dist) * (overlap / 2);
+            let pushY = (dy / dist) * (overlap / 2);
+            b1.offsetX -= pushX;
+            b1.offsetY -= pushY;
+            b2.offsetX += pushX;
+            b2.offsetY += pushY;
+            b1.velX = -b1.velX;
+            b1.velY = -b1.velY;
+            b2.velX = -b2.velX;
+            b2.velY = -b2.velY;
+          }
+        }
+      }
+      updateBalloonPositions();
+      requestAnimationFrame(simulateBalloons);
+    }
+    function notifyPlayerTurn(player, room, x, y) {
+      alert(`Notification to ${player.socialHandle}: It's your turn! You've been assigned to Balloon Room ${room} at spot (${x},${y}).`);
+    }
+    function assignBalloonSpots() {
+      assignPaidPlayers();
+      let freeCells = [];
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          if (!balloons[x][y].user) { freeCells.push({ x, y }); }
+        }
+      }
+      let combinedWaitlist = waitlistMale.concat(waitlistFemale);
+      for (let i = 0; i < combinedWaitlist.length && i < freeCells.length; i++) {
+        let player = combinedWaitlist[i];
+        if (!player.waitlistNumber) { player.waitlistNumber = waitlistCounter++; }
+        let { x, y } = freeCells[i];
+        balloons[x][y].user = player;
+        if (player.gender === "male") { waitlistMale.shift(); } else { waitlistFemale.shift(); }
+        if (currentPlayerData && player.socialHandle === currentPlayerData.socialHandle) {
+          const roomAssigned = Math.floor(y / roomRows) + 1;
+          notifyPlayerTurn(player, roomAssigned, x, y);
+        }
+      }
+      initRoomGrid();
+      renderBalloons();
+      updateTicker();
+      updateWaitlistStatus();
+    }
+    function updateWaitlistStatus() {
+      const waitlistCount = waitlistMale.length + waitlistFemale.length;
+      const ws = document.getElementById("waitlist-status");
+      if(ws) { ws.textContent = `Waitlist: ${waitlistCount} players`; }
+    }
+    function assignPaidPlayers() {
+      if (paidWaitlistMale.length > 0 && waitlistFemale.length >= 2) {
+        for (let candidate of paidWaitlistMale.slice()) {
+          for (let x = 0; x < gridWidth; x++) {
+            for (let y = 0; y < gridHeight; y++) {
+              const cell = balloons[x][y];
+              if (!cell.user) {
+                candidate.waitlistNumber = waitlistCounter++;
+                cell.user = candidate;
+                paidWaitlistMale = paidWaitlistMale.filter(c => c !== candidate);
+                x = gridWidth; y = gridHeight;
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (paidWaitlistFemale.length > 0 && waitlistMale.length >= 2) {
+        for (let candidate of paidWaitlistFemale.slice()) {
+          for (let x = 0; x < gridWidth; x++) {
+            for (let y = 0; y < gridHeight; y++) {
+              const cell = balloons[x][y];
+              if (!cell.user) {
+                candidate.waitlistNumber = waitlistCounter++;
+                cell.user = candidate;
+                paidWaitlistFemale = paidWaitlistFemale.filter(c => c !== candidate);
+                x = gridWidth; y = gridHeight;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    function updateTicker() {
+      const tickerText = customTickerText;
+      if(tickerContent) {
+        tickerContent.innerHTML = tickerText + "    " + tickerText;
+        tickerContent.style.animation = 'none';
+        setTimeout(() => {
+          tickerContent.style.animation = 'tickerTapeAnim 12s linear infinite';
+        }, 10);
+      }
+    }
+    function updateLeaderboard() {
+      const mergedUsers = [];
+      if (currentPlayerData) { mergedUsers.push(currentPlayerData); }
+      const sortedFullHearts = mergedUsers.slice().sort((a, b) => (b.fullHearts || 0) - (a.fullHearts || 0));
+      if(fullHeartsLeaderboard) {
+        fullHeartsLeaderboard.innerHTML = sortedFullHearts.map((user, index) => `<li><a href="#" target="_blank">${index + 1}. ${user.nickname} - ${user.fullHearts || 0}</a></li>`).join("");
+      }
+      const sortedBrokenHearts = mergedUsers.slice().sort((a, b) => (b.brokenHearts || 0) - (a.brokenHearts || 0));
+      if(brokenHeartsLeaderboard) {
+        brokenHeartsLeaderboard.innerHTML = sortedBrokenHearts.map((user, index) => `<li><a href="#" target="_blank">${index + 1}. ${user.nickname} - ${user.brokenHearts || 0}</a></li>`).join("");
+      }
+    }
+    function getSocialMediaLink(user) {
+      if(user.isSimulated) {
+        return "https://www.example.com/" + encodeURIComponent(user.nickname);
+      } else {
+        let handle = user.socialHandle;
+        if(handle.startsWith("@")) { handle = handle.slice(1); }
+        if(user.platform === "Telegram") { return "https://t.me/" + handle; }
+        else if(user.platform === "X") { return "https://twitter.com/" + handle; }
+        else if(user.platform === "WhatsApp") { return "https://wa.me/" + handle; }
+        else { return "#"; }
+      }
+    }
+    function showKeepModal(keptUser) {
+      const keepModal = document.getElementById("keep-modal");
+      const keptPicImg = document.getElementById("kept-profile-pic");
+      const keptHandleLink = document.getElementById("kept-handle-link");
+      const showMoreBtn = document.getElementById("show-more-btn");
+      const moreMatchesDiv = document.getElementById("more-matches");
+      const keepClose = document.getElementById("keep-close");
+      keepClose.onclick = function() { keepModal.style.display = "none"; };
+      keptPicImg.src = keptUser.profilePic || "https://via.placeholder.com/100?text=No+Image";
+      keptPicImg.alt = keptUser.nickname + "'s Profile Picture";
+      keptHandleLink.href = getSocialMediaLink(keptUser);
+      keptHandleLink.textContent = keptUser.socialHandle;
+      let potentialMatches = [];
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          let balloon = balloons[x][y];
+          if (balloon.user && !balloon.popped && balloon.user.gender === keptUser.gender) {
+            if (!(balloon.user.nickname === keptUser.nickname && balloon.user.socialHandle === keptUser.socialHandle)) {
+              potentialMatches.push(balloon.user);
+            }
+          }
+        }
+      }
+      showMoreBtn.textContent = `More potential matches (+${potentialMatches.length})`;
+      moreMatchesDiv.innerHTML = "";
+      showMoreBtn.onclick = function() {
+        if (moreMatchesDiv.style.display === "none" || moreMatchesDiv.style.display === "") {
+          moreMatchesDiv.innerHTML = "";
+          potentialMatches.forEach(user => {
+            const matchDiv = document.createElement("div");
+            const a = document.createElement("a");
+            a.href = getSocialMediaLink(user);
+            a.target = "_blank";
+            a.textContent = `${user.nickname} (${user.platform}: ${user.socialHandle})`;
+            matchDiv.appendChild(a);
+            const details = document.createElement("p");
+            details.textContent = `Age: ${user.age}, Hobbies: ${user.hobbies.join(", ")}, Love Languages: ${user.loveLanguages.join(", ")}`;
+            matchDiv.appendChild(details);
+            moreMatchesDiv.appendChild(matchDiv);
+          });
+          moreMatchesDiv.style.display = "block";
+          showMoreBtn.textContent = "Hide potential matches";
+        } else {
+          moreMatchesDiv.style.display = "none";
+          showMoreBtn.textContent = `More potential matches (+${potentialMatches.length})`;
+        }
+      };
+      keepModal.style.display = "block";
+    }
+    function handlePopBalloon(balloon) {
+      if (gameSession.lastAction === 'keep') {
+        alert("You can only keep one balloon per session. Please start a new session to pop more balloons.");
+        return false;
+      }
+      if (lockedGender && balloon.user.gender !== lockedGender) {
+        alert(`You are locked into ${lockedGender} balloons. You cannot pop a ${balloon.user.gender} balloon.`);
+        return false;
+      }
+      if (balloon.user.gender === "sponsored" && !allowSponsoredPops) {
+        alert("Sponsored balloons cannot be popped at the moment.");
+        return false;
+      }
+      if (popsRemaining > 0) {
+        balloon.popped = true;
+        balloon.user.brokenHearts = (balloon.user.brokenHearts || 0) + 1;
+        popsRemaining--;
+        gameSession.popsInSession++;
+        gameSession.lastAction = 'pop';
+        if (balloon.user.gender === "male") { malePops++; }
+        else if (balloon.user.gender === "female") { femalePops++; }
+        else if (balloon.user.gender === "sponsored") { sponsoredPops++; }
+        if (!lockedGender) {
+          lockedGender = balloon.user.gender;
+          alert(`You are now locked into ${lockedGender} balloons.`);
+        }
+        popCountDisplay.textContent = `Pops Remaining: ${popsRemaining}`;
+        if (soundToggle.checked) popSound.play();
+        renderBalloons();
+        updateLeaderboard();
+        return true;
+      } else {
+        alert("No pops remaining! Buy more to continue.");
+        return false;
+      }
+    }
+    function handleBalloonClick(x, y) {
+      const balloon = balloons[x][y];
+      if (balloon.user && balloon.user.isSimulated && balloon.user.gender === "sponsored") {
+        if (!allowSponsoredPops) {
+          handleSimulatedAd(balloon);
+          return;
+        }
+      }
+      if (balloon.popped || balloon.kept) { return; }
+      if (balloon.user) {
+        profileName.textContent = balloon.user.nickname;
+        if (currentPlayerData && balloon.user.matchedWith && balloon.user.matchedWith.includes(currentPlayerData.nickname)) {
+          profileHandle.textContent = `${balloon.user.platform}: ${balloon.user.socialHandle}`;
+        } else {
+          profileHandle.textContent = "";
+        }
+        modal.style.display = "block";
+        keepBalloonButton.onclick = () => {
+          if (handleKeepBalloon(balloon)) { modal.style.display = "none"; }
+        };
+        popBalloonButton.onclick = () => {
+          if (handlePopBalloon(balloon)) { modal.style.display = "none"; }
+        };
+      } else {
+        let storedData = localStorage.getItem("playerData");
+        if (storedData) {
+          storedData = JSON.parse(storedData);
+          let alreadyHasSpot = false;
+          for (let i = 0; i < gridWidth; i++) {
+            for (let j = 0; j < gridHeight; j++) {
+              let b = balloons[i][j];
+              if (b.user && b.user.nickname === storedData.nickname && b.user.waxAccount === storedData.waxAccount) {
+                alreadyHasSpot = true;
+                break;
+              }
+            }
+            if (alreadyHasSpot) break;
+          }
+          if (alreadyHasSpot) {
+            alert("You already have a balloon spot. Please wait for the next round or pay $1 if you prefer to play again.");
+            return;
+          }
+          if (confirm("You have already logged in. Do you want to claim this spot?")) {
+            balloon.user = storedData;
+            hasSignedUp = true;
+            alert("Logged in successfully!");
+            renderBalloons();
+            updateTicker();
+          }
+        } else {
+          signupModal.style.display = "block";
+        }
+      }
+    }
+    function handleKeepBalloon(balloon) {
+      if (gameSession.lastAction === 'keep') {
+        alert("You can only keep one balloon per session. Please start a new session to keep more balloons.");
+        return false;
+      }
+      if (lockedGender && balloon.user.gender !== lockedGender) {
+        alert(`You are locked into ${lockedGender} balloons. You cannot keep a ${balloon.user.gender} balloon.`);
+        return false;
+      }
+      if (balloon.user.gender === "sponsored" && !allowSponsoredPops) {
+        alert("Sponsored balloons cannot be kept at the moment.");
+        return false;
+      }
+      if (keepsRemaining <= 0) {
+        alert("No keeps remaining!");
+        return false;
+      }
+      balloon.kept = true;
+      balloon.user.fullHearts = (balloon.user.fullHearts || 0) + 1;
+      showKeepModal(balloon.user);
+      if (currentPlayerData) {
+        if (!currentPlayerData.matchedWith) currentPlayerData.matchedWith = [];
+        if (!balloon.user.matchedWith) balloon.user.matchedWith = [];
+        if (!currentPlayerData.matchedWith.includes(balloon.user.nickname)) {
+          currentPlayerData.matchedWith.push(balloon.user.nickname);
+        }
+        if (!balloon.user.matchedWith.includes(currentPlayerData.nickname)) {
+          balloon.user.matchedWith.push(currentPlayerData.nickname);
+        }
+      }
+      keepsRemaining--;
+      globalKeeps++;
+      gameSession.keepsInSession++;
+      gameSession.lastAction = 'keep';
+      if (balloon.user.gender === "male") { malePops = 0; }
+      else if (balloon.user.gender === "female") { femalePops = 0; }
+      else if (balloon.user.gender === "sponsored") { sponsoredPops = 0; }
+      renderBalloons();
+      updateLeaderboard();
+      updateTicker();
+      console.log(`Keeping a ${balloon.user.gender} balloon. Current pops: male=${malePops}, female=${femalePops}, sponsored=${sponsoredPops}`);
+      return true;
+    }
+    function handleSimulatedAd(balloon) {
+      if (!currentPlayerData) { alert("Please log in to watch rewarded ads."); return; }
+      if (currentPlayerData.adFree) { alert("You have removed ads."); return; }
+      if (confirm("This is a sponsored ad. Would you like to watch a rewarded video for extra pops/keeps?")) {
+        setTimeout(() => {
+          popsRemaining += 3;
+          keepsRemaining += 1;
+          popCountDisplay.textContent = `Pops Remaining: ${popsRemaining}`;
+          keepCountDisplay.textContent = `Keeps Remaining: ${keepsRemaining}`;
+          alert("Ad watched! You've earned extra pops and keeps.");
+        }, 2000);
+      }
+    }
+    async function bookSpot(x, y) {
+      if (!currentPlayerData) { alert("Please log in first."); return; }
+      if (!currentPlayerData.isSubscribed) { alert("Booking a spot is available only to subscribed users."); return; }
+      const cell = balloons[x][y];
+      if (cell.rentedUntil && cell.rentedUntil > Date.now()) { alert("This balloon spot is already booked."); return; }
+      const fee = getBookingFee(x, y);
+      if (confirm(`Book balloon spot (${x},${y}) for $${fee} (in WAXP) for 5 minutes?`)) {
+        const paymentSuccess = await processPayment(fee, "Book Balloon Spot");
+        if(paymentSuccess) {
+          let nick = currentPlayerData.nickname;
+          if (nick.length > maxNickLength) { nick = nick.substring(0, maxNickLength); }
+          cell.rentedBy = nick;
+          cell.rentedUntil = Date.now() + rentalDuration;
+          alert(`Balloon spot (${x},${y}) booked successfully for 5 minutes at $${fee} WAXP.`);
+          updateBookingLabels();
+        } else {
+          alert("Payment failed.");
+        }
+      }
+    }
+    function changeRoom(direction) {
+      if (direction === "up" && currentRoom > 1) { currentRoom--; }
+      else if (direction === "down" && currentRoom < totalRooms) { currentRoom++; }
+      roomIndicator.textContent = `Balloon Room ${currentRoom} of ${totalRooms}`;
+      initRoomGrid();
+      renderBalloons();
+    }
+    let resetTime = Date.now() + 3 * 60 * 1000;
+    let popsRemaining = 5;
+    let keepsRemaining = 1;
+    function updateResetTimer() {
+      const now = Date.now();
+      const timeLeft = resetTime - now;
+      if (timeLeft > 0) {
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        resetTimerDisplay.textContent = `00:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      } else {
+        resetTimerDisplay.textContent = "00:00:00";
+        resetTime = Date.now() + 3 * 60 * 1000;
+        resetBalloons();
+      }
+    }
+    function resetBalloons() {
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          const balloon = balloons[x][y];
+          if (!balloon.paidUntil || balloon.paidUntil <= Date.now()) {
+            balloon.user = null;
+            balloon.popped = false;
+            balloon.kept = false;
+            balloon.expiresAt = Date.now() + 3 * 60 * 1000;
+            balloon.rentedBy = null;
+            balloon.rentedUntil = 0;
+            balloon.offsetX = 0;
+            balloon.offsetY = 0;
+          }
+        }
+      }
+      waitlistMale = waitlistMale.filter(p => !p.isSimulated);
+      waitlistFemale = waitlistFemale.filter(p => !p.isSimulated);
+      simulatedUsers.forEach(user => {
+        if (user.gender === "sponsored" && currentPlayerData && currentPlayerData.adFree) {
+          waitlistMale.push(user);
+          return;
+        }
+        let assigned = false;
+        for (let x = 0; x < gridWidth; x++) {
+          for (let y = 0; y < roomRows; y++) {
+            if (!balloons[x][y].user) {
+              balloons[x][y].user = user;
+              assigned = true;
+              break;
+            }
+          }
+          if (assigned) break;
+        }
+        if (!assigned) {
+          if (user.gender === "male") { waitlistMale.push(user); }
+          else { waitlistFemale.push(user); }
+        }
+      });
+      initRoomGrid();
+      renderBalloons();
+      updateTicker();
+      updateWaitlistStatus();
+      gameSession.reset();
+    }
+    const hamburgerBtn = document.getElementById("hamburger-btn");
+    const mobileNav = document.getElementById("mobile-nav");
+    hamburgerBtn.addEventListener("click", () => { mobileNav.classList.toggle("active"); });
+    document.querySelectorAll('[id$="-mobile"]').forEach(item => {
+      const handler = () => {
+        const desktopId = item.id.slice(0, -7);
+        const desktopElement = document.getElementById(desktopId);
+        if (desktopElement) { desktopElement.click(); }
+        mobileNav.classList.remove("active");
+      };
+      item.addEventListener("click", handler);
+      item.addEventListener("touchstart", handler);
+    });
+    settingsClose.addEventListener("click", () => { settingsModal.style.display = "none"; });
+    closeButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        modal.style.display = "none";
+        signupModal.style.display = "none";
+        shareModal.style.display = "none";
+      });
+    });
+    settingsButton.addEventListener("click", () => { settingsModal.style.display = "block"; });
+    // Updated payment handlers using WaxJS:
+    document.getElementById("buy-pops").addEventListener("click", async () => {
+      const pops = prompt("How many pops would you like to buy? ($1 per pop in WAXP)");
+      if (pops && !isNaN(pops)) {
+        const success = await processPayment(parseInt(pops), "Buy Pops");
+        if(success) {
+          popsRemaining += parseInt(pops);
+          popCountDisplay.textContent = `Pops Remaining: ${popsRemaining}`;
+          alert(`You bought ${pops} pops!`);
+        } else {
+          alert("Payment failed.");
+        }
+      }
+    });
+    document.getElementById("buy-keeps").addEventListener("click", async () => {
+      const keeps = prompt("How many keeps would you like to buy? ($1 per keep in WAXP)");
+      if (keeps && !isNaN(keeps)) {
+        const success = await processPayment(parseInt(keeps), "Buy Keeps");
+        if(success) {
+          keepsRemaining += parseInt(keeps);
+          keepCountDisplay.textContent = `Keeps Remaining: ${keeps}`;
+          alert(`You bought ${keeps} keeps!`);
+        } else {
+          alert("Payment failed.");
+        }
+      }
+    });
+    subscribeBtn.addEventListener("click", async () => {
+      if (!currentPlayerData) { alert("Please log in first."); return; }
+      if (confirm("Subscribe for premium benefits? ($4.99/month in WAXP)")) {
+        const success = await processPayment(4.99, "Subscribe Premium");
+        if(success) {
+          currentPlayerData.isSubscribed = true;
+          localStorage.setItem("playerData", JSON.stringify(currentPlayerData));
+          alert("Subscription successful!");
+        } else {
+          alert("Subscription payment failed.");
+        }
+      }
+    });
+    tutorial.addEventListener("click", () => { document.getElementById("tutorial-modal").style.display = "block"; });
+    document.getElementById("tutorial-close").addEventListener("click", () => { document.getElementById("tutorial-modal").style.display = "none"; });
+    shareButton.addEventListener("click", () => { shareModal.style.display = "block"; });
+    leaderboardToggle.addEventListener("click", () => {
+      if (leaderboardDropdown.style.display === "block") { leaderboardDropdown.style.display = "none"; }
+      else { updateLeaderboard(); leaderboardDropdown.style.display = "block"; }
+    });
+    document.getElementById("close-leaderboard").addEventListener("click", () => { leaderboardDropdown.style.display = "none"; });
+    // Updated Wax login buttons event handlers:
+    waxLoginBtn.addEventListener("click", async () => { await waxLogin(); });
+    waxLoginBtnMobile.addEventListener("click", async () => { await waxLogin(); });
+    inviteBtn.addEventListener("click", () => {
+      if (!currentPlayerData) { 
+        alert("Please log in to invite a friend."); 
+        return; 
+      }
+      let inviteLink = window.location.href.split('?')[0] + "?ref=" + encodeURIComponent(currentPlayerData.waxAccount);
+      navigator.clipboard.writeText(inviteLink)
+        .then(() => alert("Invitation link copied to clipboard!"))
+        .catch(() => alert("Failed to copy invitation link."));
+    });
+    signupClose.addEventListener("click", () => { signupModal.style.display = "none"; });
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nickname = document.getElementById("nickname").value.trim();
+      if (!nickname) { alert("Please enter a nickname."); return; }
+      // Update currentPlayerData with nickname and store it via Pinata (optional)
+      currentPlayerData.nickname = nickname;
+      localStorage.setItem("playerData", JSON.stringify(currentPlayerData));
+      // Optionally, store updated data on IPFS via Pinata
+      const ipfsHash = await uploadDataToPinata(currentPlayerData);
+      console.log("Data pinned to IPFS with hash: " + ipfsHash);
+      alert("Nickname set successfully!");
+      signupModal.style.display = "none";
+      assignBalloonSpots();
+    });
+    setInterval(updateResetTimer, 1000);
+    setInterval(updateWaitlistStatus, 1000);
+    simulateBalloons();
+    initRoomGrid();
+    function addSimulatedUsers() {
+      simulatedUsers.forEach(user => {
+        if (user.gender === "sponsored" && currentPlayerData && currentPlayerData.adFree) {
+          waitlistMale.push(user);
+          return;
+        }
+        let assigned = false;
+        for (let x = 0; x < gridWidth; x++) {
+          for (let y = 0; y < roomRows; y++) {
+            if (!balloons[x][y].user) {
+              balloons[x][y].user = user;
+              assigned = true;
+              break;
+            }
+          }
+          if (assigned) break;
+        }
+        if (!assigned) {
+          if (user.gender === "male") { waitlistMale.push(user); }
+          else { waitlistFemale.push(user); }
+        }
+        signedUpUsers.push(user);
+      });
+      simulatedUsersAdded = true;
+    }
+    if (!simulatedUsersAdded) { addSimulatedUsers(); }
+    if (currentPlayerData) {
+      let assigned = false;
+      for (let x = 0; x < gridWidth; x++) {
+        for (let y = 0; y < gridHeight; y++) {
+          if (!balloons[x][y].user && y < gridHeight/2) {
+            balloons[x][y].user = currentPlayerData;
+            assigned = true;
+            break;
+          }
+        }
+        if (assigned) break;
+      }
+      if (!assigned) {
+        if (currentPlayerData.gender === "male") { waitlistMale.push(currentPlayerData); }
+        else { waitlistFemale.push(currentPlayerData); }
+      }
+    }
+    renderBalloons();
+    updateLeaderboard();
+    updateTicker();
+  </script>
+</body>
+</html>
