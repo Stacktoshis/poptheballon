@@ -1,3 +1,4 @@
+
 <html lang="en">
 
 <head>
@@ -7,7 +8,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Pop Balloons or Find Love</title>
-<script type="module" src="wax-integration.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/waxjs@1.0.0/dist-web/wax.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/anchor-link@2.1.1/dist/anchor-link.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/anchor-link-browser-transport@2.1.1/dist/anchor-link-browser-transport.min.js"></script>
+  <script src="wax-integration.js"></script>
+  
+
   <style>
 
     :root {
@@ -854,7 +862,7 @@
 
           <a href="#" id="remove-ads-btn">Remove Ads</a>
 
-          <a href="#" id="login-btn">Login</a>
+    <!--      <a href="#" id="login-btn">Login</a>  -->
 
           <a href="#" id="invite-btn">Invite a Friend</a>
 
@@ -888,7 +896,7 @@
 
       <a href="#" id="remove-ads-btn-mobile">Remove Ads</a>
 
-      <a href="#" id="login-btn-mobile">Login</a>
+   <!--   <a href="#" id="login-btn-mobile">Login</a> -->
 
       <a href="#" id="invite-btn-mobile">Invite a Friend</a>
 
@@ -1064,17 +1072,17 @@
 
         </select><br />
 
-        <select id="platform" required>
+  <!--      <select id="platform" required> 
 
           <option value="Telegram">Telegram</option>
 
           <option value="X">X</option>
 
-          <option value="WhatsApp">WhatsApp</option>
+          <option value="WhatsApp">WhatsApp</option>  
 
         </select><br />
 
-        <input type="text" id="social-handle" placeholder="Social Media Handle" required /><br />
+        <input type="text" id="social-handle" placeholder="Social Media Handle" required /><br /> -->
 
         <input type="number" id="age" placeholder="Age" required /><br />
 
@@ -1346,13 +1354,13 @@ function getBookingFee(x, y) {
 
 /* Payment Processing Stub */
 
-function processPayment(amount, description, callback) {
+//function processPayment(amount, description, callback) {
 
-  console.log(`Processing payment: $${amount} for ${description}`);
+//  console.log(`Processing payment: $${amount} for ${description}`);
 
-  setTimeout(() => { callback(true); }, 1000);
+//  setTimeout(() => { callback(true); }, 1000);
 
-}
+//}
 
 
 
@@ -3737,4 +3745,5 @@ function handleSimulatedAd(balloon) {
 </body>
 
 </html>
+
 
