@@ -9,7 +9,7 @@ class WaxIntegration {
     this.authMethod = null; // 'cloud' or 'anchor'
     this.isAuthenticated = false;
     this.pinataJWT = process.env.PINATA_JWT || '';
-    this.contractAccount = process.env.CONTRACT_ACCOUNT || 'popballoons1';
+    this.contractAccount = process.env.CONTRACT_ACCOUNT || 'poptheballon';
     this.testnet = process.env.TESTNET === 'true' || true;
     this.waxRpcEndpoint = this.testnet 
       ? 'https://testnet.waxsweden.org' 
